@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GPS Point Maker</title>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f0f2f5; 
+            color: #222; 
+            display: flex; 
+            justify-content: center; 
+            height: 100vh;
+            overflow: hidden; 
+        }
+        .container { 
+            background: white; 
+            width: 100%; 
+            max-width: 450px; 
+            padding: 15px 15px 0 15px; 
+            box-sizing: border-box; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            text-align: center;
+            height: 100%;
+        }
+        
+        .step-section {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 0; 
+        }
+
+        h2 { margin-top: 0; margin-bottom: 5px; color: #111; font-size: 22px; font-weight: 800; }
+        .dev-name { font-size: 12px; color: #666; margin-top: 0; margin-bottom: 15px; font-style: normal; user-select: none; cursor: pointer;}
+        
+        p { margin: 5px 0; font-size: 14px; color: #333; }
+
+        input[type="text"], input[type="password"] { 
+            width: 100%; 
+            max-width: 320px;
+            padding: 12px; 
+            margin-bottom: 12px; 
+            border: 2px solid #ccc; 
+            border-radius: 10px; 
+            box-sizing: border-box; 
+            text-align: center; 
+            font-size: 16px;
+            font-weight: bold;
+            outline: none;
+            background-color: #fff;
+        }
+        
+        input:focus { border-color: #007bff; }
+
+        .standard-btn { 
+            width: 100%; 
+            max-width: 320px;
+            padding: 12px; 
+            margin-bottom: 10px; 
+            border: none; 
+            border-radius: 25px; 
+            font-size: 15px; 
+            font-weight: bold;
+            cursor: pointer; 
+            color: white; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+            touch-action: manipulation;
+        }
+        
+        .standard-btn:active { transform: scale(0.95); }
+        .standard-btn:disabled { background-color: #ccc !important; cursor: not-allowed; transform: none; box-shadow: none;}
+
+        #loginBtn { background-color: #212529; } 
+        #startBtn { background-color: #0d6efd; } 
+        #doneBtn { background-color: #dc3545; } 
+        #shareBtn { background-color: #6f42c1; } 
+        #downloadBtn { background-color: #0dcaf0; color: #000; } 
+        
+        .hidden { display: none !important; }
+
+        .circle-buttons-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 320px;
+            padding: 10px 0 15px 0;
+            background: transparent;
+        }
+        
+        .action-btn-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .circle-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            cursor: pointer;
+            outline: none;
+            touch-action: manipulation;
+            transition: transform 0.1s;
+        }
+        
+        .circle-btn:active { transform: scale(0.92); }
+        .single-btn { border: 6px solid #fd7e14; } 
+        .double-btn {
+            border: 6px solid #198754; 
+            position: relative;
+        }
+        .double-btn::after {
+            content: '';
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            border: 6px solid #198754; 
+            border-radius: 50%;
+        }
+
+        .btn-label { font-weight: bold; font-size: 15px; color: #222; }
+        
+        ul { 
+            list-style-type: none; 
+            padding: 0; 
+            width: 100%; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 0;
+            padding-bottom: 15px;
+        }
+        li { 
+            background: #fff; 
+            margin-bottom: 8px; 
+            padding: 10px 12px; 
+            border-radius: 8px; 
+            width: 100%;
+            max-width: 320px;
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            justify-content: space-between; 
+            box-sizing: border-box;
+            border: 2px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .point-info { 
+            font-size: 14px; 
+            text-align: left;
+            line-height: 1.2;
+            flex-grow: 1;
+            color: #111;
+        }
+        .remark-single { color: #fd7e14; font-weight: bold; font-size: 13px;}
+        .remark-double { color: #198754; font-weight: bold; font-size: 13px;}
+        
+        .delete-btn { 
+            background-color: transparent; 
+            color: #dc3545; 
+            border: none; 
+            border-radius: 6px; 
+            padding: 8px; 
+            font-size: 18px; 
+            width: auto;
+            margin-left: 5px;
+            cursor: pointer;
+            box-shadow: none;
+        }
+        
+        pre { 
+            background: #212529; 
+            color: #0f0; 
+            padding: 12px; 
+            border-radius: 8px; 
+            overflow-x: auto; 
+            font-size: 12px; 
+            width: 100%;
+            max-width: 320px;
+            text-align: left; 
+            box-sizing: border-box;
+        }
+        #uploadStatus { font-weight: bold; margin-bottom: 15px; text-align: center; color: #111; }
+        
+        /* Offline Message Box */
+        #offlineMessage { color: #dc3545; background: #ffe6e6; padding: 20px; border-radius: 10px; border: 2px solid #dc3545; max-width: 320px;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2 id="headerTitle">System Login</h2>
+    <p class="dev-name" id="secretLockText">Developed by Ye Lin Aung</p>
+
+    <!-- App starts locked until it checks with Google Script -->
+    <div id="step-login" class="step-section">
+        <input type="text" id="surveyorName" placeholder="Enter Surveyor Name" disabled>
+        <input type="password" id="systemPin" placeholder="Enter PIN" disabled>
+        <button id="loginBtn" class="standard-btn" disabled>Connecting to Server... ⏳</button>
+    </div>
+    
+    <!-- This shows if you change the script to "OFF" -->
+    <div id="step-offline" class="step-section hidden">
+        <div id="offlineMessage">
+            <h3>SYSTEM OFFLINE</h3>
+            <p>The system administrator has locked this application.</p>
+        </div>
+    </div>
+
+    <div id="step-setup" class="step-section hidden">
+        <p>Welcome, <strong id="displaySurveyor"></strong></p>
+        <input type="text" id="routeName" placeholder="Enter Route Name">
+        <button id="startBtn" class="standard-btn">Turn on GPS & Start</button>
+    </div>
+
+    <div id="step-tracking" class="step-section hidden">
+        <p style="margin-bottom: 12px; font-size: 16px;"><strong>Route:</strong> <span id="displayRoute"></span></p>
+        
+        <button id="doneBtn" class="standard-btn">Done (Auto-Upload & Save)</button>
+        
+        <div class="circle-buttons-container">
+            <div class="action-btn-wrapper">
+                <button id="singleBtn" class="circle-btn single-btn"></button>
+                <span class="btn-label">Single</span>
+            </div>
+            <div class="action-btn-wrapper">
+                <button id="doubleBtn" class="circle-btn double-btn"></button>
+                <span class="btn-label">Double</span>
+            </div>
+        </div>
+
+        <p style="margin-top: 5px; border-bottom: 2px solid #eee; padding-bottom: 5px; width: 100%; max-width: 320px; font-size: 14px; font-weight: bold;">
+            Points Captured:
+        </p>
+        
+        <ul id="pointsList"></ul>
+    </div>
+
+    <div id="step-review" class="step-section hidden">
+        <div id="uploadStatus">Uploading to Cloud... ⏳</div>
+        <button id="shareBtn" class="standard-btn">📤 Share CSV File</button>
+        <button id="downloadBtn" class="standard-btn">⬇️ Download Backup CSV</button>
+        
+        <p style="margin-top:15px; font-weight: bold;">CSV Preview:</p>
+        <pre id="csvPreview"></pre>
+    </div>
+</div>
+
+<script>
+    const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuXVeUW-QvoZTdw-nNsLXUXGi6EGBgnti1HNyYK1HU-rprQKQVKEjk3eTVfDwtBwWr/exec"; 
+    
+    // The PIN is now loaded from the server, no longer hardcoded here!
+    let SERVER_PIN = ""; 
+
+    let surveyorName = '';
+    let routeName = '';
+    let points = [];
+    let pointCount = 0; 
+
+    const loginDiv = document.getElementById('step-login');
+    const offlineDiv = document.getElementById('step-offline');
+    const setupDiv = document.getElementById('step-setup');
+    const trackingDiv = document.getElementById('step-tracking');
+    const reviewDiv = document.getElementById('step-review');
+    const pointsList = document.getElementById('pointsList');
+
+    // --- 1. SERVER CHECK ON BOOT ---
+    window.onload = () => {
+        fetch(GOOGLE_SCRIPT_URL)
+            .then(response => response.json())
+            .then(data => {
+                if (data.system_status === "OFF") {
+                    // System is killed by owner
+                    loginDiv.classList.add('hidden');
+                    offlineDiv.classList.remove('hidden');
+                } else {
+                    // System is online, fetch the latest PIN
+                    SERVER_PIN = data.current_pin;
+                    
+                    // Unlock the login screen
+                    document.getElementById('surveyorName').disabled = false;
+                    document.getElementById('systemPin').disabled = false;
+                    document.getElementById('loginBtn').disabled = false;
+                    document.getElementById('loginBtn').innerText = "Enter System";
+                }
+            })
+            .catch(error => {
+                document.getElementById('loginBtn').innerText = "Network Error";
+                alert("You need internet access to verify the app status before logging in.");
+            });
+    };
+
+    // --- SECRET LOCK (Triple Tap Name) ---
+    let tapCount = 0;
+    let tapTimer;
+    document.getElementById('secretLockText').addEventListener('click', () => {
+        tapCount++;
+        clearTimeout(tapTimer);
+        
+        if (tapCount >= 3) {
+            if (surveyorName !== '' && !confirm("Secret Lock Activated: Wipe data and lock app?")) {
+                tapCount = 0; return;
+            }
+            location.reload(); // Instantly refreshes page to lock it back down
+        } else {
+            tapTimer = setTimeout(() => { tapCount = 0; }, 1500); 
+        }
+    });
+
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        const nameInput = document.getElementById('surveyorName').value.trim();
+        const pinInput = document.getElementById('systemPin').value.trim();
+
+        if (!nameInput) { alert("Please enter your Surveyor Name."); return; }
+        if (pinInput !== SERVER_PIN) { alert("Incorrect PIN."); return; }
+
+        surveyorName = nameInput;
+        document.getElementById('displaySurveyor').innerText = surveyorName;
+        document.getElementById('headerTitle').innerText = "Pole Verification System";
+        
+        loginDiv.classList.add('hidden');
+        setupDiv.classList.remove('hidden');
+    });
+
+    function getLocation(callback) {
+        if (!navigator.geolocation) { alert("Geolocation not supported."); return; }
+        navigator.geolocation.getCurrentPosition(
+            (position) => { callback(position); }, 
+            (error) => { alert("Error getting location: " + error.message); }, 
+            { enableHighAccuracy: true }
+        );
+    }
+
+    function addPointToUI(id, name, lat, lng, remark) {
+        const li = document.createElement('li');
+        const infoSpan = document.createElement('span');
+        infoSpan.className = 'point-info';
+        
+        const remarkClass = remark === 'Double' ? 'remark-double' : 'remark-single';
+        const icon = remark === 'Double' ? '🟢' : '🟠';
+        
+        infoSpan.innerHTML = `<strong>${name}</strong> <span class="${remarkClass}">(${icon} ${remark})</span><br><span style="font-size:12px; color:#555;">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>`;
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = 'delete-btn';
+        delBtn.innerHTML = '🗑️'; 
+        
+        delBtn.onclick = function() {
+            if (confirm("Are you sure you want to delete this point?")) {
+                points = points.filter(p => p.id !== id);
+                li.remove();
+            }
+        };
+
+        li.appendChild(infoSpan);
+        li.appendChild(delBtn);
+        pointsList.insertBefore(li, pointsList.firstChild);
+    }
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+        const nameInput = document.getElementById('routeName').value.trim();
+        if (!nameInput) { alert("Please enter a route name."); return; }
+        routeName = nameInput;
+        document.getElementById('headerTitle').innerText = "Active Survey";
+        document.getElementById('displayRoute').innerText = routeName;
+        setupDiv.classList.add('hidden');
+        trackingDiv.classList.remove('hidden');
+    });
+
+    document.getElementById('singleBtn').addEventListener('click', () => {
+        getLocation((pos) => {
+            pointCount++;
+            const pointId = Date.now();
+            const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
+            points.push({ id: pointId, name: pointName, lat: pos.coords.latitude, lng: pos.coords.longitude, remark: 'Single' });
+            addPointToUI(pointId, pointName, pos.coords.latitude, pos.coords.longitude, 'Single');
+        });
+    });
+
+    document.getElementById('doubleBtn').addEventListener('click', () => {
+        getLocation((pos) => {
+            pointCount++;
+            const pointId = Date.now();
+            const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
+            points.push({ id: pointId, name: pointName, lat: pos.coords.latitude, lng: pos.coords.longitude, remark: 'Double' });
+            addPointToUI(pointId, pointName, pos.coords.latitude, pos.coords.longitude, 'Double');
+        });
+    });
+
+    function generateCSV() {
+        let csv = "Point_Name,Latitude,Longitude,Surveyor,Remark\n";
+        [...points].reverse().forEach(p => {
+            csv += `"${p.name}",${p.lat},${p.lng},"${surveyorName}","${p.remark}"\n`;
+        });
+        return csv;
+    }
+
+    function uploadToDrive(csvContent, fileName) {
+        if (!GOOGLE_SCRIPT_URL) return;
+
+        const formData = new URLSearchParams();
+        formData.append('filename', fileName);
+        formData.append('csvData', csvContent);
+
+        fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            body: formData,
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                document.getElementById('uploadStatus').innerText = "✅ Uploaded to Google Drive successfully!";
+                document.getElementById('uploadStatus').style.color = "#198754"; 
+            } else {
+                document.getElementById('uploadStatus').innerText = "❌ Upload failed: " + data.message;
+                document.getElementById('uploadStatus').style.color = "#dc3545"; 
+            }
+        })
+        .catch(error => {
+            document.getElementById('uploadStatus').innerText = "❌ Network error. Use Share button manually.";
+            document.getElementById('uploadStatus').style.color = "#dc3545"; 
+        });
+    }
+
+    function getFileName() {
+        return `${routeName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${surveyorName.replace(/[^a-z0-9]/gi, '_')}.csv`;
+    }
+
+    function downloadCSV(csvContent) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", getFileName());
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    document.getElementById('doneBtn').addEventListener('click', () => {
+        if (points.length === 0) { alert("No points to save!"); return; }
+        
+        trackingDiv.classList.add('hidden');
+        reviewDiv.classList.remove('hidden');
+        document.getElementById('headerTitle').innerText = "Route Complete";
+
+        const csvData = generateCSV();
+        document.getElementById('csvPreview').innerText = csvData;
+        
+        uploadToDrive(csvData, getFileName());
+        downloadCSV(csvData);
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => downloadCSV(generateCSV()));
+
+    document.getElementById('shareBtn').addEventListener('click', async () => {
+        const file = new File([generateCSV()], getFileName(), { type: 'text/csv' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: `${routeName} Data` }).catch(() => {});
+        } else {
+            alert("Native sharing not supported. Use Download.");
+        }
+    });
+</script>
+</body>
+</html>
