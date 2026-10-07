@@ -137,7 +137,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 12px;
             padding: 6px 14px;
             background: #f1f5f9;
@@ -146,6 +146,9 @@
             font-weight: 700;
             color: #334155;
             box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+            width: 100%;
+            max-width: 320px;
+            box-sizing: border-box;
         }
         .pulsing-indicator { display: inline-flex; align-items: center; gap: 6px; color: #ef4444; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
         .pulsing-dot { width: 8px; height: 8px; background-color: #ef4444; border-radius: 50%; animation: pulse 1.5s infinite; }
@@ -213,9 +216,11 @@
     <!-- Live Tracking Section -->
     <div id="step-tracking" class="step-section hidden">
         <div class="session-hud">
-            <div class="pulsing-indicator"><span class="pulsing-dot"></span><span>Live Recording</span></div>
+            <div class="pulsing-indicator"><span class="pulsing-dot"></span><span style="font-size: 11px;">Live</span></div>
             <span class="hud-divider"></span>
             <span id="elapsedTime">00:00:00</span>
+            <span class="hud-divider"></span>
+            <span>Acc: <strong id="gpsAccuracyText" style="color:#ea580c;">Wait...</strong></span>
         </div>
 
         <div class="route-badge">
@@ -299,8 +304,12 @@
     let routeName = '';
     let points = [];
     let pointCount = 0; 
+    
+    // Timer and Watch Variables
     let startTime = 0;
     let timerInterval = null;
+    let watchId = null;
+    let currentBestPosition = null; 
 
     const loginDiv = document.getElementById('step-login');
     const offlineDiv = document.getElementById('step-offline');
@@ -309,6 +318,7 @@
     const cableDetailsDiv = document.getElementById('step-cable-details');
     const reviewDiv = document.getElementById('step-review');
     const pointsList = document.getElementById('pointsList');
+    const gpsAccuracyText = document.getElementById('gpsAccuracyText');
 
     // --- 1. SERVER SECURE BOOT CHECK ---
     window.onload = () => {
@@ -344,6 +354,7 @@
                 tapCount = 0; return;
             }
             stopTimer();
+            stopGpsWatch();
             location.reload(); 
         } else {
             tapTimer = setTimeout(() => { tapCount = 0; }, 1500); 
@@ -383,13 +394,37 @@
         }
     }
 
-    function getLocation(callback) {
+    // --- CONTINUOUS BACKGROUND TRACKING ---
+    function startGpsWatch() {
         if (!navigator.geolocation) { alert("Geolocation not supported."); return; }
-        navigator.geolocation.getCurrentPosition(
-            (position) => { callback(position); }, 
-            (error) => { alert("Error getting location: " + error.message); }, 
-            { enableHighAccuracy: true }
+        
+        watchId = navigator.geolocation.watchPosition(
+            (position) => { 
+                currentBestPosition = position; 
+                const accuracy = Math.round(position.coords.accuracy);
+                gpsAccuracyText.innerText = `±${accuracy}m`;
+                
+                // Visual feedback: Green if under 15m, Orange if bad
+                if (accuracy <= 15) {
+                    gpsAccuracyText.style.color = "#16a34a"; 
+                } else {
+                    gpsAccuracyText.style.color = "#ea580c"; 
+                }
+            }, 
+            (error) => { 
+                console.log("GPS Error: " + error.message);
+                gpsAccuracyText.innerText = "Error";
+                gpsAccuracyText.style.color = "#ef4444";
+            }, 
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
+    }
+
+    function stopGpsWatch() {
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
     }
 
     function addPointToUI(id, name, lat, lng, remark) {
@@ -426,33 +461,46 @@
         document.getElementById('displayRoute').innerText = routeName;
         setupDiv.classList.add('hidden');
         trackingDiv.classList.remove('hidden');
+        
         startTimer();
+        startGpsWatch(); // Turn on the continuous tracker
     });
 
     document.getElementById('singleBtn').addEventListener('click', () => {
-        getLocation((pos) => {
-            pointCount++;
-            const pointId = Date.now();
-            const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
-            points.push({ id: pointId, name: pointName, lat: pos.coords.latitude, lng: pos.coords.longitude, remark: 'Single' });
-            addPointToUI(pointId, pointName, pos.coords.latitude, pos.coords.longitude, 'Single');
-        });
+        if (!currentBestPosition) {
+            alert("Waiting for GPS lock... Please stand still for a few seconds.");
+            return;
+        }
+        pointCount++;
+        const pointId = Date.now();
+        const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
+        const lat = currentBestPosition.coords.latitude;
+        const lng = currentBestPosition.coords.longitude;
+        
+        points.push({ id: pointId, name: pointName, lat: lat, lng: lng, remark: 'Single' });
+        addPointToUI(pointId, pointName, lat, lng, 'Single');
     });
 
     document.getElementById('doubleBtn').addEventListener('click', () => {
-        getLocation((pos) => {
-            pointCount++;
-            const pointId = Date.now();
-            const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
-            points.push({ id: pointId, name: pointName, lat: pos.coords.latitude, lng: pos.coords.longitude, remark: 'Double' });
-            addPointToUI(pointId, pointName, pos.coords.latitude, pos.coords.longitude, 'Double');
-        });
+        if (!currentBestPosition) {
+            alert("Waiting for GPS lock... Please stand still for a few seconds.");
+            return;
+        }
+        pointCount++;
+        const pointId = Date.now();
+        const pointName = `point ${pointCount.toString().padStart(2, '0')}`;
+        const lat = currentBestPosition.coords.latitude;
+        const lng = currentBestPosition.coords.longitude;
+
+        points.push({ id: pointId, name: pointName, lat: lat, lng: lng, remark: 'Double' });
+        addPointToUI(pointId, pointName, lat, lng, 'Double');
     });
 
     document.getElementById('doneBtn').addEventListener('click', () => {
         if (points.length === 0) { alert("No points to save!"); return; }
         
         stopTimer();
+        stopGpsWatch(); // Turn off GPS to save phone battery
         trackingDiv.classList.add('hidden');
         cableDetailsDiv.classList.remove('hidden'); 
         document.getElementById('headerTitle').innerText = "Survey Details";
