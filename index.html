@@ -73,6 +73,7 @@
             transition: all 0.2s ease;
         }
         input:focus { border-color: #3b82f6; background-color: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+        input:disabled { background-color: #e2e8f0; color: #94a3b8; border-color: #cbd5e1; }
 
         .custom-select {
             width: 100%; 
@@ -118,6 +119,7 @@
             touch-action: manipulation;
         }
         .standard-btn:active { transform: scale(0.96); box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .standard-btn:disabled { background: #94a3b8 !important; cursor: not-allowed; transform: none; box-shadow: none; }
 
         #loginBtn { background-color: #0f172a; } 
         #startBtn { background: linear-gradient(135deg, #3b82f6, #2563eb); } 
@@ -127,6 +129,8 @@
         #downloadBtn { background-color: #f1f5f9; color: #334155; border: 1px solid #e2e8f0; box-shadow: none; } 
         
         .hidden { display: none !important; }
+
+        #offlineMessage { color: #dc2626; background: #fee2e2; padding: 25px; border-radius: 12px; border: 2px solid #ef4444; max-width: 320px; margin-top: 20px; }
 
         /* Dynamic HUD / Timer Styling */
         .session-hud {
@@ -181,11 +185,19 @@
 <div class="container">
     <h2 id="headerTitle">System Login</h2>
 
-    <!-- Login Section -->
+    <!-- Secure Login Section -->
     <div id="step-login" class="step-section">
-        <input type="text" id="surveyorName" placeholder="Enter Surveyor Name">
-        <input type="password" id="systemPin" placeholder="Enter PIN">
-        <button id="loginBtn" class="standard-btn">Enter System</button>
+        <input type="text" id="surveyorName" placeholder="Enter Surveyor Name" disabled>
+        <input type="password" id="systemPin" placeholder="Enter PIN" disabled>
+        <button id="loginBtn" class="standard-btn" disabled>Connecting to Server... ⏳</button>
+    </div>
+
+    <!-- Offline Lockout Section -->
+    <div id="step-offline" class="step-section hidden">
+        <div id="offlineMessage">
+            <h3 style="margin-top:0;">SYSTEM OFFLINE</h3>
+            <p style="color:#991b1b; margin-bottom:0;">The administrator has locked this application.</p>
+        </div>
     </div>
 
     <!-- Setup Section -->
@@ -278,8 +290,10 @@
 </div>
 
 <script>
-    const REQUIRED_PIN = "1234"; 
     const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuXVeUW-QvoZTdw-nNsLXUXGi6EGBgnti1HNyYK1HU-rprQKQVKEjk3eTVfDwtBwWr/exec"; 
+    
+    // Loaded securely from the server
+    let SERVER_PIN = ""; 
 
     let surveyorName = '';
     let routeName = '';
@@ -289,11 +303,36 @@
     let timerInterval = null;
 
     const loginDiv = document.getElementById('step-login');
+    const offlineDiv = document.getElementById('step-offline');
     const setupDiv = document.getElementById('step-setup');
     const trackingDiv = document.getElementById('step-tracking');
     const cableDetailsDiv = document.getElementById('step-cable-details');
     const reviewDiv = document.getElementById('step-review');
     const pointsList = document.getElementById('pointsList');
+
+    // --- 1. SERVER SECURE BOOT CHECK ---
+    window.onload = () => {
+        fetch(GOOGLE_SCRIPT_URL)
+            .then(response => response.json())
+            .then(data => {
+                if (data.system_status === "OFF") {
+                    loginDiv.classList.add('hidden');
+                    offlineDiv.classList.remove('hidden');
+                } else {
+                    SERVER_PIN = data.current_pin;
+                    
+                    document.getElementById('surveyorName').disabled = false;
+                    document.getElementById('systemPin').disabled = false;
+                    const btn = document.getElementById('loginBtn');
+                    btn.disabled = false;
+                    btn.innerText = "Enter System";
+                }
+            })
+            .catch(error => {
+                document.getElementById('loginBtn').innerText = "Network Error";
+                alert("Internet access is required to securely verify the app before logging in.");
+            });
+    };
 
     let tapCount = 0;
     let tapTimer;
@@ -316,7 +355,7 @@
         const pinInput = document.getElementById('systemPin').value.trim();
 
         if (!nameInput) { alert("Please enter your Surveyor Name."); return; }
-        if (pinInput !== REQUIRED_PIN) { alert("Incorrect PIN."); return; }
+        if (pinInput !== SERVER_PIN) { alert("Incorrect PIN."); return; }
 
         surveyorName = nameInput;
         document.getElementById('displaySurveyor').innerText = surveyorName;
@@ -410,17 +449,15 @@
         });
     });
 
-    // --- STEP 1: Route Done triggers Questions ---
     document.getElementById('doneBtn').addEventListener('click', () => {
         if (points.length === 0) { alert("No points to save!"); return; }
         
         stopTimer();
         trackingDiv.classList.add('hidden');
-        cableDetailsDiv.classList.remove('hidden'); // Show Questions
+        cableDetailsDiv.classList.remove('hidden'); 
         document.getElementById('headerTitle').innerText = "Survey Details";
     });
 
-    // --- STEP 2: Save Details & Generate CSV ---
     document.getElementById('saveCableBtn').addEventListener('click', () => {
         cableDetailsDiv.classList.add('hidden');
         reviewDiv.classList.remove('hidden');
@@ -436,12 +473,10 @@
     function generateCSV() {
         let csv = "Point_Name,Latitude,Longitude,Surveyor,Remark\n";
         
-        // Add all points
         [...points].reverse().forEach(p => {
             csv += `"${p.name}",${p.lat},${p.lng},"${surveyorName}","${p.remark}"\n`;
         });
         
-        // Append the final Note Row at the end
         const cableType = document.getElementById('cableTypeInput') ? document.getElementById('cableTypeInput').value : "";
         const fiberCount = document.getElementById('fiberCountInput') ? document.getElementById('fiberCountInput').value : "";
         const poleHeight = document.getElementById('poleHeightInput') ? document.getElementById('poleHeightInput').value : "";
